@@ -55,11 +55,11 @@ Common segments:
 
 ## 3) Quick Rules for Where Things Go
 
-- **Local variables (no `static`)** → **Stack**  
-- **`static` or global with non‑zero initializer** → **.data**  
-- **`static` or global with zero/no initializer** → **.bss**  
-- **`const` globals / string literals** → **.rodata**  
-- **`malloc/new`** → **Heap**
+- **Local variables (no `static`)** => **Stack**  
+- **`static` or global with non‑zero initializer** => **.data**  
+- **`static` or global with zero/no initializer** => **.bss**  
+- **`const` globals / string literals** => **.rodata**  
+- **`malloc/new`** => **Heap**
 
 > C++ note: Global/static objects with constructors also rely on init tables; the runtime calls their constructors before `main()`.
 
@@ -91,18 +91,18 @@ This sequence explains why `.data` consumes both Flash (for the image) and RAM (
 
 ## 6) Basic, Concrete Examples
 
-- A **string literal** like `"Hello"` → **.rodata** (Flash).  
-- A **lookup table** declared as `const` → **.rodata**.  
-- A **global counter** with `= 0` or no initializer → **.bss** (zeroed).  
-- A **global threshold** with `= 42` → **.data** (copied to RAM at boot).  
-- A **temporary buffer** declared inside a function → **Stack**.  
-- A **buffer allocated at runtime** with `malloc/new` → **Heap**.
+- A **string literal** like `"Hello"` => **.rodata** (Flash).  
+- A **lookup table** declared as `const` => **.rodata**.  
+- A **global counter** with `= 0` or no initializer => **.bss** (zeroed).  
+- A **global threshold** with `= 42` => **.data** (copied to RAM at boot).  
+- A **temporary buffer** declared inside a function => **Stack**.  
+- A **buffer allocated at runtime** with `malloc/new` => **Heap**.
 
 ---
 
 ## 7) Common Pitfalls & How to Avoid Them
 
-- **Hidden RAM bloat:** Large non‑zero initialized globals land in **.data** and cost both Flash + RAM. Prefer zero‑init (→ `.bss`) or place in external memory when available.
+- **Hidden RAM bloat:** Large non‑zero initialized globals land in **.data** and cost both Flash + RAM. Prefer zero‑init (=> `.bss`) or place in external memory when available.
 - **Stack overflows:** Big local arrays or recursion. Move large buffers to static/global or use heap/pools; enable stack guards/watermarks.
 - **Heap fragmentation:** Many small dynamic allocations over time. Use fixed‑size pools/arenas, or avoid dynamic allocation in real‑time paths.
 - **“Const” not really const:** Forgetting `const` can move tables from `.rodata` to `.data`, increasing RAM use.
@@ -121,7 +121,25 @@ This sequence explains why `.data` consumes both Flash (for the image) and RAM (
 
 ## 9) Conclusion
 
-- **.text / .rodata** → Flash (ROM).  
-- **.data / .bss / Heap / Stack** → RAM.  
+- **.text / .rodata** => Flash (ROM).  
+- **.data / .bss / Heap / Stack** => RAM.  
 - **Startup:** zero `.bss`, copy `.data`, run C++ static ctors, call `main()`.  
 - Optimize RAM by keeping big data in `.bss` or in Flash when truly constant; watch stack and heap usage on embedded targets.
+
+## 10) Memory Regions & Common Memory Bugs — Q&A
+- **Why split memory into multiple regions?** => To manage data efficiently and safely by separating static data, dynamic data, executable code, and temporary variables.
+- **Where do uninitialized global variables live?** => In the .bss (Uninitialized Data Segment).
+- **Two globals both exist, one initialized to 0 and one to 10 - why aren’t they in the same segment?** => 0 live in .bss (size-only placeholder, zero-filled at startup); 10 live in .data (stored with its initial bytes).
+- **When a function calls itself deeply (recursion), which region is most affected?** => The stack (each call creates a new stack frame and can overflow the stack).
+- **Why are const objects usually placed in .rodata instead of .data?** => Because "const" means that we only read it, so the OS/toolchain can place them in a non-writable segment, improving protection and saving RAM (e.g., kept in flash/ROM on embedded targets).
+- **If you need data to live for the entire program lifetime, where should it go?** => .data (for non-zero-initialized statics/globals) or .bss (for zero/uninitialized statics/globals).
+- **Why doesn’t .bss make the binary much larger, yet it consumes RAM at runtime?** => .bss only records size information, not save actual bytes data; the loader/CRT zero-fills the RAM region at startup.
+- **What happens to the stack when a function returns but a static variable inside it keeps its value?** => The stack frame is popped, but the static lives in .data or .bss (not on the stack), so its value persists (still live) across calls.
+- **When does a Memory Leak occur? Why? How to debug?** => When memory obtained via malloc/new is never freed/deleted, losing the pointer. Debug with Valgrind or AddressSanitizer (ASan) to report leaked blocks and allocation sites.
+- **When does Stack Overflow occur? Why? How to debug?** => When the program uses more stack than available (e.g., infinite/very deep recursion, or huge local arrays). Use a debugger like gdb (bt/backtrace) to see the call stack and fix recursion/allocations.
+- **When does a Segmentation Fault occur? Why? How to debug?** => when invalid memory access (null/invalid pointer, out-of-bounds). Reproduce under gdb to get a backtrace and inspect variables/addresses.
+- **What is Stack Smashing? How does the compiler detect it?** => Overwriting stack data (often the return address) via buffer overflow. Compilers insert a stack canary; enabling flags like -fstack-protector detect tampering and abort.
+- **What is Heap Corruption? How to detect it?** => Writing past allocated heap bounds or using freed blocks. ASan (and similar tools) detects out-of-bounds and use-after-free with precise reports.
+- **What is a Dangling Pointer? Why is it dangerous? How to fix?** => A pointer that refers to freed memory. Dereferencing it is undefined behavior. Fix by avoiding early free, and set pointers to NULL after free to catch later misuse.
+- **When should you prefer AddressSanitizer over Valgrind?** => When you need much better runtime performance and tight CI integration; ASan is compiler-based and typically far faster than Valgrind’s instrumentation.
+- **What is a Wild Pointer?** => A pointer that was never initialized to a valid address. Always initialize pointers (e.g., to NULL) before use.
