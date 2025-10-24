@@ -381,17 +381,17 @@ C is a statically (*cố định*) type language where each variable's type must
 
 ### 3. Căn chỉnh bộ nhớ trong struct hoạt động như thế nào?
 - Mỗi kiểu dữ liệu có **yêu cầu căn chỉnh tự nhiên** (natural alignment), ví dụ `int` thường cần địa chỉ chia hết cho 4. Trình biên dịch:
-    1) Sắp xếp từng trường tại một **offset** đáp ứng căn chỉnh của chính nó.  
-    2) Có thể **chèn byte trống (padding)** giữa các trường.  
-    3) Tổng kích thước struct thường được làm tròn đến **bội số căn chỉnh lớn nhất** của các trường.
+    - Sắp xếp từng trường tại một **offset** đáp ứng căn chỉnh của chính nó.  
+    - Có thể **chèn byte trống (padding)** giữa các trường.  
+    - Tổng kích thước struct thường được làm tròn đến **bội số căn chỉnh lớn nhất** của các trường.
 
     >**Mẹo giảm padding:** đặt các trường **từ lớn => nhỏ**, gom các trường cùng căn chỉnh lại với nhau.
 
 ### 4. Padding là gì trong struct? Làm sao tránh padding?
 - **Padding** = các **byte trống** chèn vào để đảm bảo mỗi trường bắt đầu ở địa chỉ phù hợp với **alignment**.  
 - **Cách giảm:**
-  1. **Sắp xếp lại thứ tự trường** (từ kiểu lớn => nhỏ).  
-  2. Dùng **`#pragma pack(1)`** hoặc **`__attribute__((packed))`** để “nén” (xem mục 47).
+  - **Sắp xếp lại thứ tự trường** (từ kiểu lớn => nhỏ).  
+  - Dùng **`#pragma pack(1)`** hoặc **`__attribute__((packed))`** để “nén” (xem mục 47).
 
     >**LƯU Ý:** ép pack có thể gây **truy cập không căn chỉnh** => giảm hiệu năng hoặc lỗi bus trên một số MCU.
 
